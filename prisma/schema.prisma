@@ -1,0 +1,230 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  role          UserRole  @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  emailVerified Boolean   @default(false)
+  image         String?
+  sessions      Session[]
+  accounts      Account[]
+  services      Service[]         @relation("ProviderServices")
+  customerBookings Booking[]      @relation("CustomerBookings")
+  providerBookings Booking[]      @relation("ProviderBookings")
+  reviews       Review[]          @relation("CustomerReviews")
+  providerProfile ProviderProfile?
+  notifications Notification[]
+  customerPayments Payment[]      @relation("CustomerPayments")
+  providerPayments Payment[]      @relation("ProviderPayments")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Service {
+  id              String    @id @default(cuid())
+  providerId      String
+  title           String
+  description     String
+  category        String
+  price           Decimal   @db.Decimal(10, 2)
+  durationMinutes Int
+  city            String
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  provider        User      @relation("ProviderServices", fields: [providerId], references: [id], onDelete: Cascade)
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@index([providerId])
+  @@index([category])
+  @@index([city])
+  @@map("service")
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  serviceId     String
+  customerId    String
+  providerId    String
+  scheduleAt    DateTime
+  address       String
+  notes         String?
+  status        BookingStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  service       Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customer      User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  provider      User          @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
+  review        Review?
+  payment       Payment?
+
+  @@index([serviceId])
+  @@index([customerId])
+  @@index([providerId])
+  @@index([status])
+  @@index([scheduleAt])
+  @@map("booking")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  serviceId  String
+  bookingId  String   @unique
+  customerId String
+  providerId String
+  rating     Int
+  comment    String?
+  isHidden   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer   User     @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+  @@index([providerId])
+  @@index([rating])
+  @@map("review")
+}
+
+model ProviderProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  experience    Int      @default(0)
+  serviceArea   String?
+  averageRating Decimal? @db.Decimal(3, 2)
+  totalReviews  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("provider_profile")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notification")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId      String        @unique
+  customerId     String
+  providerId     String
+  amount         Decimal       @db.Decimal(10, 2)
+  status         PaymentStatus @default(PENDING)
+  transactionRef String?
+  method         String?       @default("mock")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer       User          @relation("CustomerPayments", fields: [customerId], references: [id], onDelete: Cascade)
+  provider       User          @relation("ProviderPayments", fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([providerId])
+  @@index([status])
+  @@map("payment")
+}
+
+enum UserRole {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  REVIEW
+  SYSTEM
+}
