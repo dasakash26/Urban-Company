@@ -12,7 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type BookingActionItem = {
   id: string
@@ -123,21 +129,25 @@ export function BookingActions({ bookings, role }: BookingActionsProps) {
                 <Label htmlFor={`status-${booking.id}`}>Update status</Label>
                 <div className="flex items-center gap-2">
                   <Select
-                    id={`status-${booking.id}`}
                     value={booking.status}
-                    onChange={(event) => {
+                    onValueChange={(value) => {
                       void updateStatus(
                         booking.id,
-                        event.target.value as BookingActionItem["status"]
+                        value as BookingActionItem["status"]
                       )
                     }}
                     disabled={updatingId === booking.id}
                   >
-                    {providerStatusFlow.map((statusOption) => (
-                      <option key={statusOption} value={statusOption}>
-                        {statusOption}
-                      </option>
-                    ))}
+                    <SelectTrigger id={`status-${booking.id}`} className="w-[140px] text-xs h-8">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providerStatusFlow.map((statusOption) => (
+                        <SelectItem key={statusOption} value={statusOption} className="text-xs">
+                          {statusOption}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>

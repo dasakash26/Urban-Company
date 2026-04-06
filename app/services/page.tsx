@@ -17,6 +17,13 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type ServiceItem = {
   id: string
@@ -31,15 +38,37 @@ type ServiceItem = {
   }
 }
 
+const CITIES = [
+  { value: "ALL", label: "All cities" },
+  { value: "Delhi", label: "Delhi" },
+  { value: "Mumbai", label: "Mumbai" },
+  { value: "Bengaluru", label: "Bengaluru" },
+  { value: "Hyderabad", label: "Hyderabad" },
+  { value: "Chennai", label: "Chennai" },
+  { value: "Pune", label: "Pune" },
+  { value: "Kolkata", label: "Kolkata" },
+]
+
+const CATEGORIES = [
+  { value: "ALL", label: "All categories" },
+  { value: "Home Cleaning", label: "Home Cleaning" },
+  { value: "Deep Cleaning", label: "Deep Cleaning" },
+  { value: "Carpet Cleaning", label: "Carpet Cleaning" },
+  { value: "Kitchen Cleaning", label: "Kitchen Cleaning" },
+  { value: "Bathroom Cleaning", label: "Bathroom Cleaning" },
+  { value: "Office Cleaning", label: "Office Cleaning" },
+  { value: "Maintenance", label: "Maintenance" },
+]
+
 export default function ServicesPage() {
   const [services, setServices] = React.useState<ServiceItem[]>([])
   const [selectedServiceId, setSelectedServiceId] = React.useState<
     string | null
   >(null)
   const [search, setSearch] = React.useState("")
-  const [city, setCity] = React.useState("")
-  const [category, setCategory] = React.useState("")
-  const [loading, setLoading] = React.useState(false)
+  const [city, setCity] = React.useState("ALL")
+  const [category, setCategory] = React.useState("ALL")
+  const [loading, setLoading] = React.useState(true)
 
   const selectedService = services.find(
     (service) => service.id === selectedServiceId
@@ -48,8 +77,8 @@ export default function ServicesPage() {
   const query = React.useMemo(() => {
     const params = new URLSearchParams()
     if (search) params.set("search", search)
-    if (city) params.set("city", city)
-    if (category) params.set("category", category)
+    if (city && city !== "ALL") params.set("city", city)
+    if (category && category !== "ALL") params.set("category", category)
     return params.toString()
   }, [search, city, category])
 
@@ -70,7 +99,8 @@ export default function ServicesPage() {
       <section className="space-y-6">
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-background to-muted/40 p-6">
           <div className="pointer-events-none absolute -top-16 -right-12 size-40 rounded-full bg-primary/10 blur-2xl" />
-          <div className="space-y-3">
+          <div className="pointer-events-none absolute -bottom-10 -left-8 size-36 rounded-full bg-chart-2/10 blur-2xl" />
+          <div className="relative space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Service Discovery</Badge>
               <Badge variant="outline">{services.length} results</Badge>
@@ -85,7 +115,7 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        <Card className="border-border/60">
+        <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Smart filters</CardTitle>
             <CardDescription>
@@ -100,25 +130,34 @@ export default function ServicesPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Deep cleaning, kitchen, sofa..."
+                className="bg-background/80"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="Bengaluru"
-              />
+              <Select value={city} onValueChange={setCity}>
+                <SelectTrigger id="city">
+                  <SelectValue placeholder="All cities" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CITIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                placeholder="Maintenance"
-              />
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -127,7 +166,7 @@ export default function ServicesPage() {
           <div className="grid gap-4 xl:col-span-2">
             {loading ? (
               <Card className="border-border/60">
-                <CardContent className="text-sm text-muted-foreground">
+                <CardContent className="py-8 text-center text-sm text-muted-foreground animate-pulse">
                   Loading services...
                 </CardContent>
               </Card>
@@ -142,16 +181,17 @@ export default function ServicesPage() {
             ))}
 
             {!loading && services.length === 0 ? (
-              <Card className="border-border/60">
-                <CardContent className="flex flex-col items-start gap-3 text-muted-foreground">
-                  <p>No services match your filters.</p>
+              <Card className="border-dashed border-2 bg-transparent shadow-none">
+                <CardContent className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+                  <span className="text-lg font-medium text-foreground">No services match your filters</span>
+                  <span>Try different keywords or reset the filters.</span>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => {
                       setSearch("")
-                      setCity("")
-                      setCategory("")
+                      setCity("ALL")
+                      setCategory("ALL")
                     }}
                   >
                     Reset filters
@@ -162,7 +202,7 @@ export default function ServicesPage() {
           </div>
 
           <div className="space-y-4">
-            <Card className="border-border/60">
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm sticky top-20">
               <CardHeader>
                 <CardTitle className="text-lg">Quick booking</CardTitle>
                 <CardDescription>
@@ -180,14 +220,17 @@ export default function ServicesPage() {
                     }}
                   />
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Pick any service and it will appear here.
-                  </p>
+                  <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+                    <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center text-2xl">📋</div>
+                    <p className="text-sm text-muted-foreground">
+                      Pick any service and it will appear here.
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="border-border/60">
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg">Provider shortcut</CardTitle>
                 <CardDescription>

@@ -3,10 +3,8 @@
 import * as React from "react"
 
 import { BookingList } from "@/components/bookings/booking-list"
-import { ReviewForm } from "@/components/reviews/review-form"
 import { SiteShell } from "@/components/layout/site-shell"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -14,8 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type BookingItem = {
   id: string
@@ -29,23 +33,29 @@ type BookingItem = {
   }
 }
 
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "PENDING", label: "Pending" },
+  { value: "CONFIRMED", label: "Confirmed" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+]
+
 export default function BookingsPage() {
   const [bookings, setBookings] = React.useState<BookingItem[]>([])
-  const [status, setStatus] = React.useState("")
-  const [bookingIdForReview, setBookingIdForReview] = React.useState("")
-  const [bookingIdForPayment, setBookingIdForPayment] = React.useState("")
-  const [message, setMessage] = React.useState<string | null>(null)
-  const [loading, setLoading] = React.useState(false)
+  const [status, setStatus] = React.useState("ALL")
+  const [loading, setLoading] = React.useState(true)
 
   const query = React.useMemo(() => {
     const params = new URLSearchParams()
-    if (status) params.set("status", status)
+    if (status && status !== "ALL") params.set("status", status)
     return params.toString()
   }, [status])
 
   const loadBookings = React.useCallback(async () => {
     setLoading(true)
-    const response = await fetch(`/api/bookings${query ? `?${query}` : ""}`)
+    const response = await fetch(query ? `/api/bookings?${query}` : "/api/bookings")
 
     if (response.ok) {
       const payload = (await response.json()) as { data: BookingItem[] }
@@ -58,34 +68,14 @@ export default function BookingsPage() {
     void loadBookings()
   }, [loadBookings])
 
-  async function payForBooking() {
-    setMessage(null)
-
-    const response = await fetch("/api/payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId: bookingIdForPayment }),
-    })
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string
-      } | null
-      setMessage(payload?.error ?? "Payment failed")
-      return
-    }
-
-    setMessage("Payment recorded successfully")
-    setBookingIdForPayment("")
-    await loadBookings()
-  }
-
   return (
     <SiteShell>
       <section className="space-y-6">
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-background to-muted/40 p-6">
-          <div className="pointer-events-none absolute -top-14 -right-10 size-40 rounded-full bg-chart-2/10 blur-2xl" />
-          <div className="space-y-3">
+          <div className="pointer-events-none absolute -top-14 -right-10 size-40 rounded-full bg-primary/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-14 -left-10 size-40 rounded-full bg-chart-1/10 blur-2xl" />
+          
+          <div className="space-y-3 relative">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Bookings Hub</Badge>
               <Badge variant="outline">{bookings.length} items</Badge>
@@ -100,88 +90,39 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        <Card className="border-border/60">
+        <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">Filter bookings</CardTitle>
             <CardDescription>
-              Use status tags like PENDING, CONFIRMED, or COMPLETED.
+              Select a status to narrow down your results.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 md:max-w-xs">
             <Label htmlFor="status">Status</Label>
-            <Input
-              id="status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              placeholder="PENDING"
-            />
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
         {loading ? (
           <Card className="border-border/60">
-            <CardContent className="text-sm text-muted-foreground">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground animate-pulse">
               Loading bookings...
             </CardContent>
           </Card>
         ) : (
-          <BookingList bookings={bookings} />
+          <BookingList bookings={bookings} onUpdate={loadBookings} />
         )}
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-border/60">
-            <CardHeader>
-              <CardTitle className="text-lg">Pay a booking</CardTitle>
-              <CardDescription>
-                Enter booking id and complete a mock payment instantly.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="paymentBookingId">Booking ID</Label>
-                <Input
-                  id="paymentBookingId"
-                  value={bookingIdForPayment}
-                  onChange={(event) =>
-                    setBookingIdForPayment(event.target.value)
-                  }
-                />
-              </div>
-              <Button onClick={payForBooking}>Pay now (mock)</Button>
-              {message ? (
-                <p className="text-sm text-muted-foreground">{message}</p>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60">
-            <CardHeader>
-              <CardTitle className="text-lg">Submit review</CardTitle>
-              <CardDescription>
-                Share feedback after service completion.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="reviewBookingId">Booking ID</Label>
-                <Input
-                  id="reviewBookingId"
-                  value={bookingIdForReview}
-                  onChange={(event) =>
-                    setBookingIdForReview(event.target.value)
-                  }
-                />
-              </div>
-              {bookingIdForReview ? (
-                <ReviewForm bookingId={bookingIdForReview} />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Enter a booking id to open the review form.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </section>
     </SiteShell>
   )

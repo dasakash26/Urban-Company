@@ -97,7 +97,7 @@ export function NotificationList({
               </Badge>
               {!notification.isRead ? (
                 <Button
-                  size="xs"
+                  size="sm"
                   variant="ghost"
                   onClick={() => markOneAsRead(notification.id)}
                 >

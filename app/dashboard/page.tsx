@@ -201,8 +201,12 @@ export default async function DashboardPage() {
 
   const statEntries = Object.entries(statsRaw)
   const providerServicesForUi = providerServices.map((service) => ({
-    ...service,
+    id: service.id,
+    title: service.title,
+    category: service.category,
+    city: service.city,
     price: Number(service.price),
+    isActive: service.isActive,
   }))
 
   const stats: StatItem[] = statEntries.map(([key, value], index) => ({
@@ -231,7 +235,8 @@ export default async function DashboardPage() {
     <SiteShell>
       <section className="space-y-6">
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-background to-muted/40 p-6">
-          <div className="pointer-events-none absolute -top-14 -right-14 size-44 rounded-full bg-primary/10" />
+          <div className="pointer-events-none absolute -top-14 -right-14 size-44 rounded-full bg-primary/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-8 size-36 rounded-full bg-chart-2/10 blur-2xl" />
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{role}</Badge>
@@ -251,7 +256,7 @@ export default async function DashboardPage() {
         <StatsGrid stats={stats} />
 
         <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-border/60 xl:col-span-2">
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm xl:col-span-2">
             <CardHeader>
               <CardTitle>Bookings workflow</CardTitle>
               <CardDescription>
@@ -275,7 +280,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/60">
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
               <CardTitle>Recent notifications</CardTitle>
               <CardDescription>
@@ -295,7 +300,7 @@ export default async function DashboardPage() {
 
         {(role === "PROVIDER" || role === "ADMIN") && (
           <div className="grid gap-4 xl:grid-cols-3">
-            <Card className="border-border/60 xl:col-span-1">
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm xl:col-span-1">
               <CardHeader>
                 <CardTitle>Provider profile</CardTitle>
                 <CardDescription>
@@ -313,7 +318,7 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 xl:col-span-1">
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm xl:col-span-1">
               <CardHeader>
                 <CardTitle>Create new service</CardTitle>
                 <CardDescription>
@@ -325,7 +330,7 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/60 xl:col-span-1">
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm xl:col-span-1">
               <CardHeader>
                 <CardTitle>Recent services</CardTitle>
                 <CardDescription>

@@ -148,11 +148,11 @@ export default async function Page() {
           {cards.map((card) => (
             <Card
               key={card.title}
-              className={
+              className={`transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
                 card.tone === "accent"
                   ? "border-primary/30 bg-primary/5"
-                  : "border-border/60"
-              }
+                  : "border-border/60 bg-background/50 backdrop-blur-lg"
+              }`}
             >
               <CardHeader className="space-y-3">
                 <CardTitle className="text-xl tracking-tight">

@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ProfileBookings } from "@/components/profile/profile-bookings"
 import { getSession } from "@/lib/auth-server"
 import { formatCurrencyINR } from "@/lib/format"
 import prisma from "@/lib/prisma"
@@ -37,40 +38,67 @@ export default async function ProfilePage() {
     )
   }
 
-  const [providerProfile, recentBookings, recentReviews, payments] =
-    await Promise.all([
-      prisma.providerProfile.findUnique({ where: { userId: session.user.id } }),
-      prisma.booking.findMany({
-        where: {
-          OR: [
-            { customerId: session.user.id },
-            { providerId: session.user.id },
-          ],
-        },
-        include: {
-          service: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-      }),
-      prisma.review.findMany({
-        where: {
-          OR: [
-            { customerId: session.user.id },
-            { providerId: session.user.id },
-          ],
-        },
-        include: {
-          service: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-      }),
-      prisma.payment.aggregate({
-        where: { customerId: session.user.id, status: "SUCCESS" },
-        _sum: { amount: true },
-      }),
-    ])
+  const [
+    providerProfile,
+    recentBookings,
+    recentReviews,
+    paymentsPaid,
+    paymentsEarned,
+    providerServices
+  ] = await Promise.all([
+    prisma.providerProfile.findUnique({ where: { userId: session.user.id } }),
+    prisma.booking.findMany({
+      where: {
+        OR: [
+          { customerId: session.user.id },
+          { providerId: session.user.id },
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+        scheduleAt: true,
+        service: { select: { title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+    prisma.review.findMany({
+      where: {
+        OR: [
+          { customerId: session.user.id },
+          { providerId: session.user.id },
+        ],
+      },
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        service: { select: { title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+    prisma.payment.aggregate({
+      where: { customerId: session.user.id, status: "SUCCESS" },
+      _sum: { amount: true },
+    }),
+    prisma.payment.aggregate({
+      where: { providerId: session.user.id, status: "SUCCESS" },
+      _sum: { amount: true },
+    }),
+    prisma.service.findMany({
+      where: { providerId: session.user.id },
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        price: true,
+        isActive: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
 
   return (
     <SiteShell>
@@ -97,15 +125,27 @@ export default async function ProfilePage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-border/60">
-            <CardHeader>
-              <CardTitle className="text-lg">Total paid</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-semibold tracking-tight">
-              INR {formatCurrencyINR(Number(payments._sum.amount ?? 0))}
-            </CardContent>
-          </Card>
-          <Card className="border-border/60">
+          {session.user.role === "PROVIDER" ? (
+             <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Total earned</CardTitle>
+              </CardHeader>
+              <CardContent className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
+                INR {formatCurrencyINR(Number(paymentsEarned._sum.amount ?? 0))}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">Total paid</CardTitle>
+              </CardHeader>
+              <CardContent className="text-3xl font-semibold tracking-tight">
+                INR {formatCurrencyINR(Number(paymentsPaid._sum.amount ?? 0))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Bookings</CardTitle>
             </CardHeader>
@@ -113,7 +153,8 @@ export default async function ProfilePage() {
               {recentBookings.length}
             </CardContent>
           </Card>
-          <Card className="border-border/60">
+          
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Reviews</CardTitle>
             </CardHeader>
@@ -124,7 +165,7 @@ export default async function ProfilePage() {
         </div>
 
         {providerProfile ? (
-          <Card className="border-border/60">
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
               <CardTitle>Provider profile</CardTitle>
               <CardDescription>
@@ -153,28 +194,45 @@ export default async function ProfilePage() {
           </Card>
         ) : null}
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-border/60">
+        {session.user.role === "PROVIDER" ? (
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
-              <CardTitle>Recent bookings</CardTitle>
+              <CardTitle>My Services</CardTitle>
+              <CardDescription>
+                Services you are currently offering on the marketplace.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {recentBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="rounded-md border border-border/60 p-3"
-                >
-                  <p className="font-medium">{booking.service.title}</p>
-                  <p className="text-muted-foreground">{booking.status}</p>
+            <CardContent>
+              {providerServices.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {providerServices.map((service) => (
+                    <div key={service.id} className="rounded-lg border border-border/60 p-4 bg-muted/10 shadow-sm transition-all hover:shadow-md">
+                      <p className="font-semibold text-lg">{service.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{service.category} &bull; INR {formatCurrencyINR(Number(service.price))}</p>
+                      <Badge variant={service.isActive ? "default" : "secondary"} className="mt-3">
+                        {service.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {recentBookings.length === 0 ? (
-                <p className="text-muted-foreground">No bookings yet.</p>
-              ) : null}
+              ) : (
+                <p className="text-sm text-muted-foreground flex h-24 items-center justify-center rounded-lg border border-dashed border-border/60">
+                   You have not listed any services yet.
+                </p>
+              )}
             </CardContent>
           </Card>
+        ) : null}
 
-          <Card className="border-border/60">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ProfileBookings bookings={recentBookings.map((b) => ({
+            id: b.id,
+            status: b.status,
+            scheduleAt: b.scheduleAt.toISOString(),
+            service: { title: b.service.title },
+          }))} />
+
+          <Card className="border-border/60 bg-background/50 backdrop-blur-md shadow-sm">
             <CardHeader>
               <CardTitle>Recent reviews</CardTitle>
             </CardHeader>
@@ -182,10 +240,10 @@ export default async function ProfilePage() {
               {recentReviews.map((review) => (
                 <div
                   key={review.id}
-                  className="rounded-md border border-border/60 p-3"
+                  className="rounded-md border border-border/60 p-3 bg-muted/5 shadow-sm"
                 >
                   <p className="font-medium">{review.service.title}</p>
-                  <p className="text-muted-foreground">{review.rating}/5</p>
+                  <p className="text-muted-foreground mt-1.5 font-semibold text-amber-500">{review.rating} / 5</p>
                 </div>
               ))}
               {recentReviews.length === 0 ? (

@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { authClient } from "@/lib/auth-client"
 
 type AuthFormProps = {
@@ -48,8 +54,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         return
       }
 
-      router.push("/dashboard")
-      router.refresh()
+      window.location.href = "/dashboard"
       return
     }
 
@@ -67,8 +72,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       return
     }
 
-    router.push("/dashboard")
-    router.refresh()
+    window.location.href = "/dashboard"
   }
 
   return (
@@ -120,13 +124,14 @@ export function AuthForm({ mode }: AuthFormProps) {
           {mode === "register" ? (
             <div className="grid gap-2">
               <Label htmlFor="role">Role</Label>
-              <Select
-                id="role"
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-              >
-                <option value="CUSTOMER">Customer</option>
-                <option value="PROVIDER">Provider</option>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CUSTOMER">Customer</SelectItem>
+                  <SelectItem value="PROVIDER">Provider</SelectItem>
+                </SelectContent>
               </Select>
             </div>
           ) : null}
